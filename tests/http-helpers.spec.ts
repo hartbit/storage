@@ -11,6 +11,7 @@ import {
   ForbiddenException,
   HttpException,
   NotFoundException,
+  PayloadTooLargeException,
   type StreamableFile,
 } from '@nestjs/common';
 import { InMemoryDisk, receiveSignedUpload, S3Disk, serveFile, serveSignedUrl } from '../lib/index.js';
@@ -348,6 +349,25 @@ describe('receiveSignedUpload()', () => {
 
     expect(error).toBeInstanceOf(BadRequestException);
     expect((error as BadRequestException).message).toBe('The body does not match its Content-Length');
+    expect(disk.keys()).toEqual([]);
+  });
+
+  it('refuses a body over maxSize with a 413 that carries the limit, and nothing is stored', async () => {
+    const upload = await disk.signedUpload('big.bin', { contentType: 'application/pdf' });
+    const req = expressRequest(
+      local(upload.url),
+      { 'content-type': 'application/pdf', 'content-length': '1001' },
+      Buffer.alloc(1001, 1),
+    );
+
+    const error = await errorOf(receiveSignedUpload(disk, { req, maxSize: 1000 }));
+
+    expect(error).toBeInstanceOf(PayloadTooLargeException);
+    expect((error as PayloadTooLargeException).limit).toBe(1000);
+    expect((error as PayloadTooLargeException).getResponse()).toEqual({
+      statusCode: 413,
+      message: 'Payload Too Large',
+    });
     expect(disk.keys()).toEqual([]);
   });
 

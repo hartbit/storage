@@ -27,6 +27,9 @@ export interface ReceiveSignedUploadOptions {
   req: unknown;
   /** The response (`@Res({ passthrough: true })`), to send the new file's `ETag`, as S3 does. */
   res?: unknown;
-  /** Refuse bodies over this many bytes when the URL was signed without a `contentLength`. */
+  /**
+   * Refuse bodies over this many bytes when the URL was signed without a `contentLength`, with
+   * a `PayloadTooLargeException` that carries this limit as its `limit`.
+   */
   maxSize?: number;
 }

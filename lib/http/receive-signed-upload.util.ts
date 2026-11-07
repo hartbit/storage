@@ -17,7 +17,9 @@ import { requestHeaders, setHeader, verify } from './serve-file.util.js';
  * `InMemoryDisk` with `signedUrls`), the way S3 receives one to a presigned URL: the
  * signature, expiry and method are checked, the `Content-Type` must be the signed one, a
  * signed `Content-Length` must match, and the body streams onto the disk. A bad URL or header
- * is a `ForbiddenException`; a body of the wrong length, a `BadRequestException`.
+ * is a `ForbiddenException`; a body of the wrong length, a `BadRequestException`; a body over
+ * `maxSize`, a `PayloadTooLargeException` that carries `maxSize` as its `limit`, for an
+ * exception filter to report.
  *
  * On Fastify, register a catch-all content type parser that leaves the body unread, so the
  * upload reaches the handler as a stream:
@@ -43,7 +45,7 @@ export async function receiveSignedUpload(
     throw new ForbiddenException('The Content-Length does not match the signed URL');
   }
   if (claims.contentLength === undefined && options.maxSize !== undefined && length > options.maxSize) {
-    throw new PayloadTooLargeException();
+    throw new PayloadTooLargeException(undefined, { limit: options.maxSize });
   }
 
   const body = rawBody(options.req);
